@@ -10,9 +10,6 @@ import ClasspathPlugin._
 import java.nio.charset.Charset
 
 object OsxAppPlugin extends Plugin {
-   private def orr[A,T>:A](key:TaskKey[A], rhs:Initialize[Task[T]]):Initialize[Task[T]]	=
-   	   	(key.? zipWith rhs) { (x,y) => (x :^: y :^: KNil) map (Scoped hf2 { _ getOrElse _ }) }
-   	
 	//------------------------------------------------------------------------------
 	//## exported
 	
@@ -37,11 +34,20 @@ object OsxAppPlugin extends Plugin {
 	// .icns file
 	val osxappBundleIcons	= SettingKey[File]("osxapp-bundle-icons")
 	
+	// 1.6 or 1.6+ or 1.6*
+	val osxappJvmVersion	= TaskKey[String]("osxapp-jvm-version")
+	
 	// name of the main class
 	val osxappMainClass		= TaskKey[Option[String]]("osxapp-main-class")
 	
-	// in megabytes
-	val osxappHeapSize		= SettingKey[Int]("osxapp-heap-size")
+	// vm options like -Xmx128m
+	val osxappVmOptions		= SettingKey[Seq[String]]("osxapp-vm-options")
+	
+	// -D in the command line
+	val osxappProperties	= SettingKey[Map[String,String]]("osxapp-properties")
+	
+	// command line arguments
+	val osxappArguments		= SettingKey[Seq[String]]("osxapp-arguments")
 	
 	// JavaApplicationStub
 	val osxappApplicationStub	= SettingKey[File]("osxapp-application-stub")
@@ -56,8 +62,11 @@ object OsxAppPlugin extends Plugin {
 		// TODO use version for CFBundleShortVersionString and add build number for CFBundleVersion
 		osxappBundleVersion		<<= Keys.version,
 		osxappBundleIcons		:= null,	// TODO ugly
+		osxappJvmVersion		:= "1.6+",
 		osxappMainClass			<<= orr(Keys.mainClass, Keys.selectMainClass in Runtime),
-		osxappHeapSize			:= 128,
+		osxappVmOptions			:= Seq.empty,
+		osxappProperties		:= Map.empty,
+		osxappArguments			:= Seq.empty,
 		osxappApplicationStub	:= file("/System/Library/Frameworks/JavaVM.framework/Versions/Current/Resources/MacOS/JavaApplicationStub")
 	)
 	
@@ -70,8 +79,11 @@ object OsxAppPlugin extends Plugin {
 			bundleName:String,
 			bundleVersion:String,
 			bundleIcons:File,
+			jvmVersion:String,
 			mainClass:Option[String],
-			heapSize:Int,
+			vmOptions:Seq[String],
+			properties:Map[String,String],
+			arguments:Seq[String],
 			applicationStub:File)
 			
 	private def dataTask:Initialize[Task[Data]] = 
@@ -80,8 +92,11 @@ object OsxAppPlugin extends Plugin {
 			osxappBundleName,
 			osxappBundleVersion,
 			osxappBundleIcons,
+			osxappJvmVersion,
 			osxappMainClass,
-			osxappHeapSize,
+			osxappVmOptions,
+			osxappProperties,
+			osxappArguments,
 			osxappApplicationStub
 		) map
 		Data.apply
@@ -100,10 +115,14 @@ object OsxAppPlugin extends Plugin {
 		assets:Seq[Asset],
 		data:Data
 	):File = {
-		require(data.bundleIcons		!= null, "osxapp-icons must be set")
-		val mainClass	= data.mainClass getOrElse (sys error "osxapp-main-class must be set")
+		require(data.bundleIcons	!= null, "osxapp-icons must be set")
 		
-		val classPath	= assets map { _.name } mkString ":"
+		val jvmVersion	= <string>{	data.jvmVersion																}</string>
+		val mainClass	= <string>{	data.mainClass getOrElse (sys error "osxapp-main-class must be set")		}</string>
+		val classPath	= <string>{	assets	map { _.name } mkString ":"											}</string>
+		val vmOptions	= <array>{	data.vmOptions	map  { it => <string>{it}</string> }						}</array>
+		val properties	= <dict>{	data.properties	map  { it => <key>{it._1}</key><string>{it._2}</string>	}	}</dict>
+		val arguments	= <array>{	data.arguments	map  { it => <string>{it}</string> }						}</array>
 		val appStubName	= "JavaApplicationStub"
 		
 		val plist	=
@@ -122,23 +141,26 @@ object OsxAppPlugin extends Plugin {
 						<key>CFBundleShortVersionString</key>		<string>{data.bundleVersion}</string>
 						<key>CFBundleSignature</key>				<string>????</string>
 						<key>CFBundleVersion</key>					<string>{data.bundleVersion}</string>
-						<!-- $JAVAROOT $APP_PACKAGE -->
+						<!-- 
+						$JAVAROOT		Contents/Resources/Java
+						$APP_PACKAGE	the root directory of the bundle
+						$USER_HOME		the current user's home directory
+						-->
 						<key>Java</key><dict>
-							<key>JVMVersion</key>		<string>1.6+</string>
-							<key>MainClass</key>		<string>{data.mainClass}</string>
+							<key>JVMVersion</key>		{jvmVersion}
+							<key>MainClass</key>		{mainClass}
 							<key>WorkingDirectory</key>	<string>$JAVAROOT</string>
-							<key>VMOptions</key>		<string>-Xmx{data.heapSize}m</string>
-							<key>Arguments</key>		<string></string>
-							<key>ClassPath</key>		<string>{classPath}</string>
-							<key>Properties</key><dict>
-								<!-- 
-								<key>apple.awt.brushMetalLook</key>							<string>true</string>
-								<key>com.apple.macos.useScreenMenuBar</key>					<string>true</string>
-								<key>com.apple.mrj.application.apple.menu.about.name</key>	<string>{bundleName}</string>
-								<key>com.apple.mrj.application.growbox.intrudes</key>		<string>true</string>
-								<key>com.apple.mrj.application.live-resize</key>			<string>true</string>
-								-->
-							</dict>
+							<key>VMOptions</key>		{vmOptions}
+							<key>Arguments</key>		{arguments}
+							<key>ClassPath</key>		{classPath}
+							<key>Properties</key>		{properties}
+							<!-- 
+							<key>apple.awt.brushMetalLook</key>							<string>true</string>
+							<key>com.apple.macos.useScreenMenuBar</key>					<string>true</string>
+							<key>com.apple.mrj.application.apple.menu.about.name</key>	<string>{bundleName}</string>
+							<key>com.apple.mrj.application.growbox.intrudes</key>		<string>true</string>
+							<key>com.apple.mrj.application.live-resize</key>			<string>true</string>
+							-->
 						</dict>
 					</dict>
 				</plist>
@@ -167,4 +189,10 @@ object OsxAppPlugin extends Plugin {
 		
 		appOut
 	}
+	
+	//------------------------------------------------------------------------------
+	//## utils
+	
+	private def orr[A,T>:A](key:TaskKey[A], rhs:Initialize[Task[T]]):Initialize[Task[T]]	=
+			(key.? zipWith rhs) { (x,y) => (x :^: y :^: KNil) map (Scoped hf2 { _ getOrElse _ }) }
 }

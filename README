@@ -12,16 +12,16 @@ Build and publish the plugin:
     sbt publish-local
     
 Add the plugin to your project in project/plugins/build.sbt:
-    addSbtPlugin("de.djini" % "xsbt-osxapp" % "0.0.1")
+    addSbtPlugin("de.djini" % "xsbt-osxapp" % "0.3.0")
     
 Include the plugin in you project's build.sbt:
 
     osxappSettings
 
-    osxappMainClass	:= Some("my.Main")
-    
-    osxappHeapSize	:= 192
+    osxappMainClass		:= Some("my.Main")
     
     osxappBundleIcons	:= file("default.icns")
+    
+    osxappVmOptions		:= Seq("-Xmx128m")
 
 Run the osxapp task to get a directory containing a os x application bundle.
