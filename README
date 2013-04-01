@@ -1,10 +1,10 @@
 A osx app bundle plugin for xsbt
 
 To build this code, get and install SBT from 
-    https://github.com/harrah/xsbt
+    https://github.com/sbt/sbt
 
 Get and install this plugin before building:
-	https://github.com/ritschwumm/xsbt-classpath
+    https://github.com/ritschwumm/xsbt-classpath
 
 Build and publish the plugin:
     git clone git@github.com:ritschwumm/xsbt-osxapp.git
@@ -12,29 +12,29 @@ Build and publish the plugin:
     sbt publish-local
     
 Add the plugin to your project in project/plugins.sbt:
-    addSbtPlugin("de.djini" % "xsbt-osxapp" % "0.5.0")
+    addSbtPlugin("de.djini" % "xsbt-osxapp" % "0.6.0")
     
 Include the plugin in you project's build.sbt:
 
     osxappSettings
 
-    osxappMainClass		:= Some("my.Main")
+    osxappMainClass     := Some("my.Main")
     
-    osxappBundleIcons	:= file("default.icns")
+    osxappBundleIcons   := file("default.icns")
     
-    osxappVmOptions		:= Seq("-Xmx128m")
+    osxappVmOptions     := Seq("-Xmx128m")
     
 The osxappVM key lets you choose which java VM you want to use. To use a regular
 JVM from Oracle insert this code:
 
-	// path defaults to /Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/bin/java 
-	osxappVm	:= Oracle7("/path/to/java/command")
-	
+    // path defaults to /Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/bin/java 
+    osxappVm    := Oracle7("/path/to/java/command")
+    
 To use Apple's java 6 VM and their JavaApplicationStub, insert this code:
-	
-	// path defaults to /System/Library/Frameworks/JavaVM.framework/Versions/Current/Resources/MacOS/JavaApplicationStub
-	osxappVm	:= AppleJava6("1.6+", file("/path/to/JavaApplicationStub"))
-	
+    
+    // path defaults to /System/Library/Frameworks/JavaVM.framework/Versions/Current/Resources/MacOS/JavaApplicationStub
+    osxappVm    := AppleJava6("1.6+", file("/path/to/JavaApplicationStub"))
+    
 You can leave out this key to assume Oracle7()
 
 Run the osxapp task to get a directory containing a os x application bundle.

@@ -126,7 +126,7 @@ object OsxAppPlugin extends Plugin {
 	
 	private def buildTaskImpl(
 		streams:TaskStreams,	
-		assets:Seq[Asset],
+		assets:Seq[ClasspathAsset],
 		data:Data
 	):File = {
 		require(data.bundleIcons	!= null, "osxapp-icons must be set")
@@ -218,6 +218,7 @@ object OsxAppPlugin extends Plugin {
 				data.arguments						map quote
 			)
 			val command	= parts.flatten mkString " "
+			// export LC_CTYPE="en_US.UTF-8"
 			val script	= """#!/bin/bash
 			base="$(dirname "$0")"/../Resources/Java
 			""" + command + """
