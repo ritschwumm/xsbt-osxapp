@@ -1,4 +1,4 @@
-A osx app bundle plugin for xsbt
+An osx app bundle plugin for sbt
 
 To build this code, get and install SBT from 
     https://github.com/sbt/sbt
@@ -12,7 +12,7 @@ Build and publish the plugin:
     sbt publish-local
     
 Add the plugin to your project in project/plugins.sbt:
-    addSbtPlugin("de.djini" % "xsbt-osxapp" % "0.6.0")
+    addSbtPlugin("de.djini" % "xsbt-osxapp" % "0.7.0")
     
 Include the plugin in you project's build.sbt:
 

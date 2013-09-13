@@ -67,24 +67,26 @@ object OsxAppPlugin extends Plugin {
 	// command line arguments
 	val osxappArguments		= SettingKey[Seq[String]]("osxapp-arguments")
 	
-	lazy val osxappSettings:Seq[Project.Setting[_]]	= classpathSettings ++ Seq(
-		osxappData				<<= dataTask,
-		osxappBuild				<<= buildTask,
-		osxappBaseDirectory		<<= Keys.crossTarget { _ / "osxapp" },
-		
-		osxappBundleId			<<= (Keys.organization, Keys.normalizedName) { _ + "." + _ },
-		osxappBundleName		<<= Keys.name in Runtime,
-		// TODO use version for CFBundleShortVersionString and add build number for CFBundleVersion
-		osxappBundleVersion		<<= Keys.version,
-		// TODO ugly
-		osxappBundleIcons		:= null,
-		osxappVm				:= OracleJava7(),
-		
-		osxappMainClass			<<= orr(Keys.mainClass, Keys.selectMainClass in Runtime),
-		osxappVmOptions			:= Seq.empty,
-		osxappProperties		:= Map.empty,
-		osxappArguments			:= Seq.empty
-	)
+	lazy val osxappSettings:Seq[Def.Setting[_]]	= 
+			classpathSettings ++ 
+			Seq(
+				osxappData				<<= dataTask,
+				osxappBuild				<<= buildTask,
+				osxappBaseDirectory		<<= Keys.crossTarget { _ / "osxapp" },
+				
+				osxappBundleId			<<= (Keys.organization, Keys.normalizedName) { _ + "." + _ },
+				osxappBundleName		<<= Keys.name in Runtime,
+				// TODO use version for CFBundleShortVersionString and add build number for CFBundleVersion
+				osxappBundleVersion		<<= Keys.version,
+				// TODO ugly
+				osxappBundleIcons		:= null,
+				osxappVm				:= OracleJava7(),
+				
+				osxappMainClass			<<= Keys.mainClass,
+				osxappVmOptions			:= Seq.empty,
+				osxappProperties		:= Map.empty,
+				osxappArguments			:= Seq.empty
+			)
 	
 	//------------------------------------------------------------------------------
 	//## data task
@@ -101,7 +103,7 @@ object OsxAppPlugin extends Plugin {
 			properties:Map[String,String],
 			arguments:Seq[String])
 			
-	private def dataTask:Initialize[Task[Data]] = 
+	private def dataTask:Def.Initialize[Task[Data]] = 
 		(	osxappBaseDirectory,				
 			osxappBundleId,
 			osxappBundleName,
@@ -118,7 +120,7 @@ object OsxAppPlugin extends Plugin {
 	//------------------------------------------------------------------------------
 	//## build task
 	
-	private def buildTask:Initialize[Task[File]] = (
+	private def buildTask:Def.Initialize[Task[File]] = (
 		Keys.streams,
 		classpathAssets,	
 		osxappData
@@ -229,7 +231,7 @@ object OsxAppPlugin extends Plugin {
 		//------------------------------------------------------------------------------
 		
 		val appOut	= data.base / (data.bundleName + ".app") 
-		streams.log info ("building app in " + appOut)
+		streams.log info ("building osx app in " + appOut)
 		
 		// TODO inelegant
 		IO delete			appOut
@@ -254,10 +256,4 @@ object OsxAppPlugin extends Plugin {
 		
 		appOut
 	}
-	
-	//------------------------------------------------------------------------------
-	//## utils
-	
-	private def orr[A,T>:A](key:TaskKey[A], rhs:Initialize[Task[T]]):Initialize[Task[T]]	=
-			(key.? zipWith rhs) { (x,y) => (x :^: y :^: KNil) map (Scoped hf2 { _ getOrElse _ }) }
 }
