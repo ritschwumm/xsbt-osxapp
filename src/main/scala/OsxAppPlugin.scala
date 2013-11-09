@@ -1,7 +1,6 @@
 import sbt._
 
-import Keys.Classpath
-import Keys.TaskStreams
+import Keys.{ Classpath, TaskStreams, watchSources }
 import Project.Initialize
 import classpath.ClasspathUtilities
 
@@ -27,7 +26,7 @@ object OsxAppPlugin extends Plugin {
 	extends OsxAppVm
 	
 	case class OracleJava7(
-		command:String = "/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/bin/java"
+		command:String	= "/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/bin/java"
 	)
 	extends OsxAppVm
 	
@@ -85,7 +84,12 @@ object OsxAppPlugin extends Plugin {
 				osxappMainClass			<<= Keys.mainClass,
 				osxappVmOptions			:= Seq.empty,
 				osxappProperties		:= Map.empty,
-				osxappArguments			:= Seq.empty
+				osxappArguments			:= Seq.empty,
+				watchSources			<<= (watchSources, osxappBundleIcons) map { 
+					(watchSources, osxappBundleIcons) => {
+						watchSources :+ osxappBundleIcons
+					}
+				}
 			)
 	
 	//------------------------------------------------------------------------------
@@ -231,7 +235,7 @@ object OsxAppPlugin extends Plugin {
 		//------------------------------------------------------------------------------
 		
 		val appOut	= data.base / (data.bundleName + ".app") 
-		streams.log info ("building osx app in " + appOut)
+		streams.log info s"building osx app in ${appOut}"
 		
 		// TODO inelegant
 		IO delete			appOut
@@ -249,9 +253,10 @@ object OsxAppPlugin extends Plugin {
 		executableFile setExecutable (true, false)
 		
 		IO copyFile	(data.bundleIcons,	contents / "Resources" / data.bundleIcons.getName)
-		val assetsToCopy	= assets map { asset =>
-			(asset.jar, contents / "Resources" / "Java" / asset.name)
-		}
+		val assetsToCopy	= 
+				assets map { asset =>
+					(asset.jar, contents / "Resources" / "Java" / asset.name)
+				}
 		IO copy assetsToCopy
 		
 		appOut
