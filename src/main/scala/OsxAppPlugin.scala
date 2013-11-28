@@ -69,27 +69,42 @@ object OsxAppPlugin extends Plugin {
 	lazy val osxappSettings:Seq[Def.Setting[_]]	= 
 			classpathSettings ++ 
 			Vector(
-				osxappData				<<= dataTask,
-				osxappBuild				<<= buildTask,
-				osxappBaseDirectory		<<= Keys.crossTarget { _ / "osxapp" },
+				osxappData	:=
+						Data(
+							osxappBaseDirectory.value,			
+							osxappBundleId.value,
+							osxappBundleName.value,
+							osxappBundleVersion.value,
+							osxappBundleIcons.value,
+							osxappVm.value,
+							osxappMainClass.value,
+							osxappVmOptions.value,
+							osxappProperties.value,
+							osxappArguments.value
+						),
+				osxappBuild		:=
+						buildTaskImpl(
+							streams	= Keys.streams.value,
+							assets	= classpathAssets.value,
+							data	= osxappData.value
+						),
+						
+				osxappBaseDirectory	:= Keys.crossTarget.value / "osxapp",
 				
-				osxappBundleId			<<= (Keys.organization, Keys.normalizedName) { _ + "." + _ },
-				osxappBundleName		<<= Keys.name in Runtime,
+				osxappBundleId		:= Keys.organization.value + "." + Keys.normalizedName.value,
+				osxappBundleName	:= (Keys.name in Runtime).value,
 				// TODO use version for CFBundleShortVersionString and add build number for CFBundleVersion
-				osxappBundleVersion		<<= Keys.version,
+				osxappBundleVersion	:= Keys.version.value,
 				// TODO ugly
-				osxappBundleIcons		:= null,
-				osxappVm				:= OracleJava7(),
+				osxappBundleIcons	:= null,
+				osxappVm			:= OracleJava7(),
 				
-				osxappMainClass			<<= Keys.mainClass,
-				osxappVmOptions			:= Seq.empty,
-				osxappProperties		:= Map.empty,
-				osxappArguments			:= Seq.empty,
-				Keys.watchSources		<<= (Keys.watchSources, osxappBundleIcons) map { 
-					(watchSources, osxappBundleIcons) => {
-						watchSources :+ osxappBundleIcons
-					}
-				}
+				osxappMainClass		:= Keys.mainClass.value,
+				osxappVmOptions		:= Seq.empty,
+				osxappProperties	:= Map.empty,
+				osxappArguments		:= Seq.empty,
+				
+				Keys.watchSources	:= Keys.watchSources.value :+ osxappBundleIcons.value
 			)
 	
 	//------------------------------------------------------------------------------
@@ -107,29 +122,9 @@ object OsxAppPlugin extends Plugin {
 		properties:Map[String,String],
 		arguments:Seq[String]
 	)
-			
-	private def dataTask:Def.Initialize[Task[Data]] = 
-		(	osxappBaseDirectory,				
-			osxappBundleId,
-			osxappBundleName,
-			osxappBundleVersion,
-			osxappBundleIcons,
-			osxappVm,
-			osxappMainClass,
-			osxappVmOptions,
-			osxappProperties,
-			osxappArguments
-		) map
-		Data.apply
 	
 	//------------------------------------------------------------------------------
 	//## build task
-	
-	private def buildTask:Def.Initialize[Task[File]] = (
-		Keys.streams,
-		classpathAssets,	
-		osxappData
-	) map buildTaskImpl
 	
 	private def buildTaskImpl(
 		streams:TaskStreams,	
