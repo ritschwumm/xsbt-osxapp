@@ -1,6 +1,6 @@
 import sbt._
 
-import Keys.{ Classpath, TaskStreams, watchSources }
+import Keys.{ Classpath, TaskStreams }
 import Project.Initialize
 import classpath.ClasspathUtilities
 
@@ -68,7 +68,7 @@ object OsxAppPlugin extends Plugin {
 	
 	lazy val osxappSettings:Seq[Def.Setting[_]]	= 
 			classpathSettings ++ 
-			Seq(
+			Vector(
 				osxappData				<<= dataTask,
 				osxappBuild				<<= buildTask,
 				osxappBaseDirectory		<<= Keys.crossTarget { _ / "osxapp" },
@@ -85,7 +85,7 @@ object OsxAppPlugin extends Plugin {
 				osxappVmOptions			:= Seq.empty,
 				osxappProperties		:= Map.empty,
 				osxappArguments			:= Seq.empty,
-				watchSources			<<= (watchSources, osxappBundleIcons) map { 
+				Keys.watchSources		<<= (Keys.watchSources, osxappBundleIcons) map { 
 					(watchSources, osxappBundleIcons) => {
 						watchSources :+ osxappBundleIcons
 					}
@@ -96,16 +96,17 @@ object OsxAppPlugin extends Plugin {
 	//## data task
 	
 	private case class Data(
-			base:File,
-			bundleId:String,
-			bundleName:String,
-			bundleVersion:String,
-			bundleIcons:File,
-			vm:OsxAppVm,
-			mainClass:Option[String],
-			vmOptions:Seq[String],
-			properties:Map[String,String],
-			arguments:Seq[String])
+		base:File,
+		bundleId:String,
+		bundleName:String,
+		bundleVersion:String,
+		bundleIcons:File,
+		vm:OsxAppVm,
+		mainClass:Option[String],
+		vmOptions:Seq[String],
+		properties:Map[String,String],
+		arguments:Seq[String]
+	)
 			
 	private def dataTask:Def.Initialize[Task[Data]] = 
 		(	osxappBaseDirectory,				
@@ -135,15 +136,15 @@ object OsxAppPlugin extends Plugin {
 		assets:Seq[ClasspathAsset],
 		data:Data
 	):File = {
-		require(data.bundleIcons	!= null, "osxapp-icons must be set")
+		require(data.bundleIcons != null, "osxapp-icons must be set")
 		
-		val executableName	= 
+		val executableName:String	= 
 				data.vm match {
 					case AppleJava6(jvmVersion, javaApplicationStub)	=> "JavaApplicationStub"
 					case OracleJava7(javaCommand)						=> "run"
 				}
 				
-		def plist	= 
+		def plist:String	= 
 				"""<?xml version="1.0" encoding="UTF-8"?>""" +
 				"""<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">"""	+
 				<plist version="1.0">
@@ -204,7 +205,7 @@ object OsxAppPlugin extends Plugin {
 			out
 		}
 			
-		def executableData	=
+		def executableData:Either[File,String]	=
 				data.vm match {
 					case AppleJava6(_, javaApplicationStub)	=> Left(javaApplicationStub)
 					case OracleJava7(javaCommand)			=> Right(shellScript(javaCommand))
@@ -214,15 +215,16 @@ object OsxAppPlugin extends Plugin {
 			def quote(s:String):String				= "'" + (s replace ("'", "'\"'\"'")) + "'" 
 			def property(p:(String,String)):String	= "-D" + p._1 + "=" + p._2
 			def main(s:Option[String]):String		= s getOrElse (sys error "osxapp-main-class not set")
-			val parts:Seq[Seq[String]]	= Seq( 
-				Seq(javaCommand)					map quote,
-				data.vmOptions						map quote,
-				data.properties.toSeq map property	map quote,
-				Seq("-cp")							map quote,
-				Seq(""""$base"/'*'"""),
-				Seq(main(data.mainClass))			map quote,
-				data.arguments						map quote
-			)
+			val parts:Seq[Seq[String]]	= 
+					Vector( 
+						Seq(javaCommand)					map quote,
+						data.vmOptions						map quote,
+						data.properties.toSeq map property	map quote,
+						Seq("-cp")							map quote,
+						Seq(""""$base"/'*'"""),
+						Seq(main(data.mainClass))			map quote,
+						data.arguments						map quote
+					)
 			val command	= parts.flatten mkString " "
 			// export LC_CTYPE="en_US.UTF-8"
 			val script	= """#!/bin/bash
