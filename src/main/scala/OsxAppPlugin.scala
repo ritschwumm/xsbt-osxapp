@@ -95,8 +95,8 @@ object OsxAppPlugin extends Plugin {
 				osxappBundleName	:= (Keys.name in Runtime).value,
 				// TODO use version for CFBundleShortVersionString and add build number for CFBundleVersion
 				osxappBundleVersion	:= Keys.version.value,
-				// TODO ugly
-				osxappBundleIcons	:= null,
+				// mandatory
+				// osxappBundleIcons	:= null,
 				osxappVm			:= OracleJava7(),
 				
 				osxappMainClass		:= Keys.mainClass.value,
@@ -131,8 +131,6 @@ object OsxAppPlugin extends Plugin {
 		assets:Seq[ClasspathAsset],
 		data:Data
 	):File = {
-		require(data.bundleIcons != null, "osxapp-icons must be set")
-		
 		val executableName:String	= 
 				data.vm match {
 					case AppleJava6(jvmVersion, javaApplicationStub)	=> "JavaApplicationStub"
