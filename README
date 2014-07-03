@@ -12,7 +12,7 @@ Build and publish the plugin:
     sbt publish-local
     
 Add the plugin to your project in project/plugins.sbt:
-    addSbtPlugin("de.djini" % "xsbt-osxapp" % "0.11.0")
+    addSbtPlugin("de.djini" % "xsbt-osxapp" % "0.12.0")
     
 Include the plugin in you project's build.sbt:
 
@@ -38,3 +38,11 @@ To use Apple's java 6 VM and their JavaApplicationStub, insert this code:
 You can leave out this key to assume Oracle7()
 
 Run the osxapp task to get a directory containing a os x application bundle.
+
+To create a zip file from the application, you can use the xsbt-zipper plugin:
+
+    // osxapp::zipper
+    inTask(osxappBuild)(zipperSettings ++ Seq(
+        zipperFiles     := selectSubpaths(osxappBuild.value, -DirectoryFilter).toSeq,
+        zipperBundle    := zipperBundle.value + ".app" 
+    ))

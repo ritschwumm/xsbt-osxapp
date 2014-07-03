@@ -11,8 +11,7 @@ import scala.xml.NodeSeq
 import java.nio.charset.Charset
 
 object OsxAppPlugin extends Plugin {
-	// build data helper
-	private val osxappData	= TaskKey[Data]("osxapp-data")
+	private val osxappData	= taskKey[Data]("build data helper")
 	
 	//------------------------------------------------------------------------------
 	//## exported vm choice
@@ -33,38 +32,17 @@ object OsxAppPlugin extends Plugin {
 	//------------------------------------------------------------------------------
 	//## exported keys
 	
-	// complete build, returns the created directory
-	val osxappBuild			= TaskKey[File]("osxapp")
-	
-	// where to put the application bundle
-	val osxappBaseDirectory	= SettingKey[File]("osxapp-base-directory")
-	
-	// organization . normalizedName by default
-	val osxappBundleId		= SettingKey[String]("osxapp-bundle-id")
-	
-	// without the ".app" suffix
-	val osxappBundleName	= SettingKey[String]("osxapp-bundle-name")
-	
-	// short version
-	val osxappBundleVersion	= SettingKey[String]("osxapp-bundle-version")
-	
-	// .icns file
-	val osxappBundleIcons	= SettingKey[File]("osxapp-bundle-icons")
-	
-	// AppleJava6 or OracleJava7
-	val osxappVm			= SettingKey[OsxAppVm]("osxapp-vm")
-	
-	// name of the main class
-	val osxappMainClass		= TaskKey[Option[String]]("osxapp-main-class")
-	
-	// vm options like -Xmx128m
-	val osxappVmOptions		= SettingKey[Seq[String]]("osxapp-vm-options")
-	
-	// -D in the command line
-	val osxappProperties	= SettingKey[Map[String,String]]("osxapp-properties")
-	
-	// command line arguments
-	val osxappArguments		= SettingKey[Seq[String]]("osxapp-arguments")
+	val osxapp				= taskKey[File]("complete build, returns the created directory")
+	val osxappBaseDirectory	= settingKey[File]("where to put the application bundle")
+	val osxappBundleId		= settingKey[String]("bundle id, defaults to organization . normalizedName")
+	val osxappBundleName	= settingKey[String]("bundle naame without the \".app\" suffix")
+	val osxappBundleVersion	= settingKey[String]("short version")
+	val osxappBundleIcons	= settingKey[File](".icns file")
+	val osxappVm			= settingKey[OsxAppVm]("AppleJava6 or OracleJava7")
+	val osxappMainClass		= taskKey[Option[String]]("name of the main class")
+	val osxappVmOptions		= settingKey[Seq[String]]("vm options like -Xmx128")
+	val osxappProperties	= settingKey[Map[String,String]]("-D in the command line")
+	val osxappArguments		= settingKey[Seq[String]]("command line arguments")
 	
 	lazy val osxappSettings:Seq[Def.Setting[_]]	= 
 			classpathSettings ++ 
@@ -82,7 +60,7 @@ object OsxAppPlugin extends Plugin {
 							osxappProperties.value,
 							osxappArguments.value
 						),
-				osxappBuild		:=
+				osxapp		:=
 						buildTaskImpl(
 							streams	= Keys.streams.value,
 							assets	= classpathAssets.value,
