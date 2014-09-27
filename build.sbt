@@ -4,7 +4,7 @@ name			:= "xsbt-osxapp"
 
 organization	:= "de.djini"
 
-version			:= "0.13.0"
+version			:= "0.14.0"
 
 addSbtPlugin("de.djini" % "xsbt-classpath" % "0.10.0")
 	

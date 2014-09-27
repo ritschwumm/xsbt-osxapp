@@ -12,9 +12,9 @@ Build and publish the plugin:
     sbt publish-local
     
 Add the plugin to your project in project/plugins.sbt:
-    addSbtPlugin("de.djini" % "xsbt-osxapp" % "0.13.0")
+    addSbtPlugin("de.djini" % "xsbt-osxapp" % "0.14.0")
     
-Include the plugin in you project's build.sbt:
+Include the plugin in your project's build.sbt:
 
     osxappSettings
 

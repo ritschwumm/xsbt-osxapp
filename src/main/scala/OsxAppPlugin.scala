@@ -1,14 +1,10 @@
 import sbt._
 
-import Keys.{ Classpath, TaskStreams }
-import Project.Initialize
-import classpath.ClasspathUtilities
+import Keys.TaskStreams
 
 import ClasspathPlugin._
 
 import scala.xml.NodeSeq
-
-import java.nio.charset.Charset
 
 object OsxAppPlugin extends Plugin {
 	private val osxappData	= taskKey[Data]("build data helper")
@@ -32,33 +28,35 @@ object OsxAppPlugin extends Plugin {
 	//------------------------------------------------------------------------------
 	//## exported keys
 	
-	val osxapp				= taskKey[File]("complete build, returns the created directory")
-	val osxappBaseDirectory	= settingKey[File]("where to put the application bundle")
-	val osxappBundleId		= settingKey[String]("bundle id, defaults to organization . normalizedName")
-	val osxappBundleName	= settingKey[String]("bundle naame without the \".app\" suffix")
-	val osxappBundleVersion	= settingKey[String]("short version")
-	val osxappBundleIcons	= settingKey[File](".icns file")
-	val osxappVm			= settingKey[OsxAppVm]("AppleJava6 or OracleJava7")
-	val osxappMainClass		= taskKey[Option[String]]("name of the main class")
-	val osxappVmOptions		= settingKey[Seq[String]]("vm options like -Xmx128")
-	val osxappProperties	= settingKey[Map[String,String]]("-D in the command line")
-	val osxappArguments		= settingKey[Seq[String]]("command line arguments")
+	val osxapp					= taskKey[File]("complete build, returns the created directory")
+	val osxappOutput			= settingKey[File]("where to put the application bundle")
+	
+	val osxappBundleId			= settingKey[String]("bundle id, defaults to organization . normalizedName")
+	val osxappBundleName		= settingKey[String]("bundle naame without the \".app\" suffix")
+	val osxappBundleVersion		= settingKey[String]("short version")
+	val osxappBundleIcons		= settingKey[File](".icns file")
+	val osxappVm				= settingKey[OsxAppVm]("AppleJava6 or OracleJava7")
+	
+	val osxappVmOptions			= settingKey[Seq[String]]("vm options like -Xmx128")
+	val osxappSystemProperties	= settingKey[Map[String,String]]("-D in the command line")
+	val osxappMainClass			= taskKey[Option[String]]("name of the main class")
+	val osxappPrefixArguments	= settingKey[Seq[String]]("command line arguments")
 	
 	lazy val osxappSettings:Seq[Def.Setting[_]]	= 
 			classpathSettings ++ 
 			Vector(
 				osxappData	:=
 						Data(
-							osxappBaseDirectory.value,			
-							osxappBundleId.value,
-							osxappBundleName.value,
-							osxappBundleVersion.value,
-							osxappBundleIcons.value,
-							osxappVm.value,
-							osxappMainClass.value,
-							osxappVmOptions.value,
-							osxappProperties.value,
-							osxappArguments.value
+							output				= osxappOutput.value,
+							bundleId			= osxappBundleId.value,
+							bundleName			= osxappBundleName.value,
+							bundleVersion		= osxappBundleVersion.value,
+							bundleIcons			= osxappBundleIcons.value,
+							vm					= osxappVm.value,
+							mainClass			= osxappMainClass.value,
+							vmOptions			= osxappVmOptions.value,
+							systemProperties	= osxappSystemProperties.value,
+							prefixArguments		= osxappPrefixArguments.value
 						),
 				osxapp		:=
 						buildTaskImpl(
@@ -67,20 +65,20 @@ object OsxAppPlugin extends Plugin {
 							data	= osxappData.value
 						),
 						
-				osxappBaseDirectory	:= Keys.crossTarget.value / "osxapp",
+				osxappOutput			:= Keys.crossTarget.value / "osxapp",
 				
-				osxappBundleId		:= Keys.organization.value + "." + Keys.normalizedName.value,
-				osxappBundleName	:= (Keys.name in Runtime).value,
+				osxappBundleId			:= Keys.organization.value + "." + Keys.normalizedName.value,
+				osxappBundleName		:= (Keys.name in Runtime).value,
 				// TODO use version for CFBundleShortVersionString and add build number for CFBundleVersion
-				osxappBundleVersion	:= Keys.version.value,
+				osxappBundleVersion		:= Keys.version.value,
 				// mandatory
 				// osxappBundleIcons	:= null,
-				osxappVm			:= OracleJava7(),
+				osxappVm				:= OracleJava7(),
 				
-				osxappMainClass		:= Keys.mainClass.value,
-				osxappVmOptions		:= Seq.empty,
-				osxappProperties	:= Map.empty,
-				osxappArguments		:= Seq.empty,
+				osxappMainClass			:= Keys.mainClass.value,
+				osxappVmOptions			:= Seq.empty,
+				osxappSystemProperties	:= Map.empty,
+				osxappPrefixArguments	:= Seq.empty,
 				
 				Keys.watchSources	:= Keys.watchSources.value :+ osxappBundleIcons.value
 			)
@@ -89,7 +87,7 @@ object OsxAppPlugin extends Plugin {
 	//## data task
 	
 	private case class Data(
-		base:File,
+		output:File,
 		bundleId:String,
 		bundleName:String,
 		bundleVersion:String,
@@ -97,8 +95,8 @@ object OsxAppPlugin extends Plugin {
 		vm:OsxAppVm,
 		mainClass:Option[String],
 		vmOptions:Seq[String],
-		properties:Map[String,String],
-		arguments:Seq[String]
+		systemProperties:Map[String,String],
+		prefixArguments:Seq[String]
 	)
 	
 	//------------------------------------------------------------------------------
@@ -142,12 +140,12 @@ object OsxAppPlugin extends Plugin {
 				}
 				
 		def appStubConfig(_jvmVersion:String):NodeSeq	= {
-			val jvmVersion	= <string>{	_jvmVersion																	}</string>
-			val mainClass	= <string>{	data.mainClass getOrElse (sys error "osxapp-main-class must be set")		}</string>
-			val classPath	= <string>{	assets	map { _.name } mkString ":"											}</string>
-			val vmOptions	= <array>{	data.vmOptions	map  { it => <string>{it}</string> }						}</array>
-			val properties	= <dict>{	data.properties	map  { it => <key>{it._1}</key><string>{it._2}</string>	}	}</dict>
-			val arguments	= <array>{	data.arguments	map  { it => <string>{it}</string> }						}</array>
+			val jvmVersion			= <string>{	_jvmVersion																	}</string>
+			val mainClass			= <string>{	data.mainClass getOrElse (sys error "osxappMainClass must be set")		}</string>
+			val classPath			= <string>{	assets	map { _.name } mkString ":"											}</string>
+			val vmOptions			= <array>{	data.vmOptions	map  { it => <string>{it}</string> }						}</array>
+			val systemProperties	= <dict>{	data.systemProperties	map  { it => <key>{it._1}</key><string>{it._2}</string>	}	}</dict>
+			val prefixArguments		= <array>{	data.prefixArguments	map  { it => <string>{it}</string> }						}</array>
 			val out:NodeSeq	=
 					<xml:group>
 						<!-- 
@@ -161,9 +159,9 @@ object OsxAppPlugin extends Plugin {
 							<key>MainClass</key>		{mainClass}
 							<key>WorkingDirectory</key>	<string>$JAVAROOT</string>
 							<key>VMOptions</key>		{vmOptions}
-							<key>Arguments</key>		{arguments}
+							<key>Arguments</key>		{prefixArguments}
 							<key>ClassPath</key>		{classPath}
-							<key>Properties</key>		{properties}
+							<key>Properties</key>		{systemProperties}
 							<!-- 
 							<key>apple.awt.brushMetalLook</key>							<string>true</string>
 							<key>com.apple.macos.useScreenMenuBar</key>					<string>true</string>
@@ -185,16 +183,16 @@ object OsxAppPlugin extends Plugin {
 		def shellScript(javaCommand:String):String	= {
 			def quote(s:String):String				= "'" + (s replace ("'", "'\"'\"'")) + "'" 
 			def property(p:(String,String)):String	= "-D" + p._1 + "=" + p._2
-			def main(s:Option[String]):String		= s getOrElse (sys error "osxapp-main-class not set")
+			def main(s:Option[String]):String		= s getOrElse (sys error "osxappMainClass must be set")
 			val parts:Seq[Seq[String]]	= 
 					Vector( 
-						Seq(javaCommand)					map quote,
-						data.vmOptions						map quote,
-						data.properties.toSeq map property	map quote,
-						Seq("-cp")							map quote,
-						Seq(""""$base"/'*'"""),
-						Seq(main(data.mainClass))			map quote,
-						data.arguments						map quote
+						Vector(javaCommand)							map quote,
+						data.vmOptions								map quote,
+						data.systemProperties.toSeq map property	map quote,
+						Vector("-cp")								map quote,
+						Vector(""""$base"/'*'"""),
+						Vector(main(data.mainClass))				map quote,
+						data.prefixArguments						map quote
 					)
 			val command	= parts.flatten mkString " "
 			// export LC_CTYPE="en_US.UTF-8"
@@ -207,7 +205,7 @@ object OsxAppPlugin extends Plugin {
 		
 		//------------------------------------------------------------------------------
 		
-		val appOut	= data.base / (data.bundleName + ".app") 
+		val appOut	= data.output / (data.bundleName + ".app") 
 		streams.log info s"building osx app in ${appOut}"
 		
 		// TODO inelegant
