@@ -3,7 +3,8 @@ An osx app bundle plugin for sbt
 To build this code, get and install SBT from 
     https://github.com/sbt/sbt
 
-Get and install this plugin before building:
+Get and install these plugins before building:
+    https://github.com/ritschwumm/xsbt-util
     https://github.com/ritschwumm/xsbt-classpath
 
 Build and publish the plugin:
@@ -12,7 +13,7 @@ Build and publish the plugin:
     sbt publish-local
     
 Add the plugin to your project in project/plugins.sbt:
-    addSbtPlugin("de.djini" % "xsbt-osxapp" % "0.14.0")
+    addSbtPlugin("de.djini" % "xsbt-osxapp" % <version>)
     
 Include the plugin in your project's build.sbt:
 
