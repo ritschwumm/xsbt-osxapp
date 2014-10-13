@@ -1,16 +1,15 @@
-import sbt._
+package xsbtOsxApp
 
 import scala.xml.NodeSeq
 
+import sbt._
 import Keys.TaskStreams
 
-import ClasspathPlugin._
 import xsbtUtil._
+import xsbtClasspath.{ Asset => ClasspathAsset, ClasspathPlugin }
+import xsbtClasspath.Import.classpathAssets
 
-object OsxAppPlugin extends Plugin {
-	//------------------------------------------------------------------------------
-	//## exported vm choice
-	
+object Import {
 	sealed trait OsxAppVm
 	
 	case class AppleJava6(
@@ -23,9 +22,6 @@ object OsxAppPlugin extends Plugin {
 		command:String	= "/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/bin/java"
 	)
 	extends OsxAppVm
-	
-	//------------------------------------------------------------------------------
-	//## exported keys
 	
 	val osxapp					= taskKey[File]("complete build, returns the created directory")
 	val osxappTargetDir			= settingKey[File]("where to put the application bundle")
@@ -40,9 +36,20 @@ object OsxAppPlugin extends Plugin {
 	val osxappSystemProperties	= settingKey[Map[String,String]]("-D in the command line")
 	val osxappMainClass			= taskKey[Option[String]]("name of the main class")
 	val osxappPrefixArguments	= settingKey[Seq[String]]("command line arguments")
+}
+
+object OsxAppPlugin extends AutoPlugin {
+	//------------------------------------------------------------------------------
+	//## exports
 	
-	lazy val osxappSettings:Seq[Def.Setting[_]]	= 
-			classpathSettings ++ 
+	override def requires:Plugins		= ClasspathPlugin
+	
+	override def trigger:PluginTrigger	= allRequirements
+	
+	lazy val autoImport	= Import
+	import autoImport._
+	
+	override def projectSettings:Seq[Def.Setting[_]]	=
 			Vector(
 				osxapp		:=
 						buildTask(

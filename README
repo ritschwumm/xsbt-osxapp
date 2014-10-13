@@ -17,8 +17,6 @@ Add the plugin to your project in project/plugins.sbt:
     
 Include the plugin in your project's build.sbt:
 
-    osxappSettings
-
     osxappMainClass     := Some("my.Main")
     
     osxappBundleIcons   := file("default.icns")
