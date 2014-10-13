@@ -5,7 +5,9 @@ import scala.xml.NodeSeq
 import sbt._
 import Keys.TaskStreams
 
-import xsbtUtil._
+import xsbtUtil.types._
+import xsbtUtil.{ util => xu }
+
 import xsbtClasspath.{ Asset => ClasspathAsset, ClasspathPlugin }
 import xsbtClasspath.Import.classpathAssets
 
@@ -23,39 +25,47 @@ object Import {
 	)
 	extends OsxAppVm
 	
+	//------------------------------------------------------------------------------
+	
 	val osxapp					= taskKey[File]("complete build, returns the created directory")
-	val osxappTargetDir			= settingKey[File]("where to put the application bundle")
+	val osxappPackageName		= settingKey[String]("name of the package built")
+	val osxappAppDir			= settingKey[File]("where to put the application bundle")
+	
+	val osxappZip				= taskKey[File]("complete build, returns the created application zip file")
+	val osxappAppZip			= settingKey[File]("where to put the application zip file")
 	
 	val osxappBundleId			= settingKey[String]("bundle id, defaults to organization . normalizedName")
-	val osxappBundleName		= settingKey[String]("bundle naame without the \".app\" suffix")
+	val osxappBundleName		= settingKey[String]("bundle name without the \".app\" suffix")
 	val osxappBundleVersion		= settingKey[String]("short version")
 	val osxappBundleIcons		= settingKey[File](".icns file")
 	val osxappVm				= settingKey[OsxAppVm]("AppleJava6 or OracleJava7")
 	
+	val osxappMainClass			= taskKey[Option[String]]("name of the main class")
 	val osxappVmOptions			= settingKey[Seq[String]]("vm options like -Xmx128")
 	val osxappSystemProperties	= settingKey[Map[String,String]]("-D in the command line")
-	val osxappMainClass			= taskKey[Option[String]]("name of the main class")
 	val osxappPrefixArguments	= settingKey[Seq[String]]("command line arguments")
+	
+	val osxappBuildDir			= settingKey[File]("base directory of built files")
 }
 
 object OsxAppPlugin extends AutoPlugin {
 	//------------------------------------------------------------------------------
 	//## exports
 	
-	override def requires:Plugins		= ClasspathPlugin
-	
-	override def trigger:PluginTrigger	= allRequirements
-	
 	lazy val autoImport	= Import
 	import autoImport._
 	
-	override def projectSettings:Seq[Def.Setting[_]]	=
+	override val requires:Plugins		= ClasspathPlugin && plugins.JvmPlugin
+	
+	override val trigger:PluginTrigger	= noTrigger
+	
+	override lazy val projectSettings:Seq[Def.Setting[_]]	=
 			Vector(
 				osxapp		:=
 						buildTask(
 							streams				= Keys.streams.value,
 							assets				= classpathAssets.value,
-							targetDir			= osxappTargetDir.value,
+							appDir				= osxappAppDir.value,
 							bundleId			= osxappBundleId.value,
 							bundleName			= osxappBundleName.value,
 							bundleVersion		= osxappBundleVersion.value,
@@ -66,9 +76,19 @@ object OsxAppPlugin extends AutoPlugin {
 							systemProperties	= osxappSystemProperties.value,
 							prefixArguments		= osxappPrefixArguments.value
 						),
-						
-				osxappTargetDir			:= Keys.crossTarget.value / "osxapp",
+				osxappAppDir			:= osxappBuildDir.value / osxappPackageName.value,
 				
+				osxappZip	:=
+						zipTask(
+							streams	= Keys.streams.value,
+							appDir	= osxapp.value,
+							prefix	= osxappPackageName.value,
+							appZip	= osxappAppZip.value
+						),
+				osxappAppZip			:= osxappBuildDir.value / (osxappPackageName.value + ".zip"),
+				
+				osxappPackageName		:= Keys.name.value + "-" + Keys.version.value + ".app",
+		
 				osxappBundleId			:= Keys.organization.value + "." + Keys.normalizedName.value,
 				osxappBundleName		:= (Keys.name in Runtime).value,
 				// TODO use version for CFBundleShortVersionString and add build number for CFBundleVersion
@@ -82,6 +102,8 @@ object OsxAppPlugin extends AutoPlugin {
 				osxappSystemProperties	:= Map.empty,
 				osxappPrefixArguments	:= Seq.empty,
 				
+				osxappBuildDir			:= Keys.crossTarget.value / "osxapp",
+				
 				Keys.watchSources		:= Keys.watchSources.value :+ osxappBundleIcons.value
 			)
 	
@@ -91,7 +113,7 @@ object OsxAppPlugin extends AutoPlugin {
 	private def buildTask(
 		streams:TaskStreams,	
 		assets:Seq[ClasspathAsset],
-		targetDir:File,
+		appDir:File,
 		bundleId:String,
 		bundleName:String,
 		bundleVersion:String,
@@ -102,7 +124,10 @@ object OsxAppPlugin extends AutoPlugin {
 		systemProperties:Map[String,String],
 		prefixArguments:Seq[String]
 	):File = {
-		val mainClassGot	= mainClass getOrElse failWithError(streams, s"${osxappMainClass.key.label} must be set")
+		val mainClassGot	=
+				mainClass getOrElse {
+					xu.fail logging (streams, s"${osxappMainClass.key.label} must be set") 
+				}
 		
 		val executableName:String	= 
 				vm match {
@@ -186,13 +211,13 @@ object OsxAppPlugin extends AutoPlugin {
 		def shellScript(javaCommand:String):String	= {
 			val parts:Seq[Seq[String]]	= 
 					Vector( 
-						Vector(javaCommand)							map unixHardQuote,
-						vmOptions									map unixHardQuote,
-						scriptSystemPropertyMap(systemProperties)	map unixHardQuote,
-						Vector("-cp")								map unixHardQuote,
+						Vector(javaCommand)							map xu.script.unixHardQuote,
+						vmOptions									map xu.script.unixHardQuote,
+						xu.script systemProperties systemProperties	map xu.script.unixHardQuote,
+						Vector("-cp")								map xu.script.unixHardQuote,
 						Vector(""""$base"/'*'"""),
-						Vector(mainClassGot)						map unixHardQuote,
-						prefixArguments								map unixHardQuote
+						Vector(mainClassGot)						map xu.script.unixHardQuote,
+						prefixArguments								map xu.script.unixHardQuote
 					)
 			val command	= parts.flatten mkString " "
 			// export LC_CTYPE="en_US.UTF-8"
@@ -205,14 +230,13 @@ object OsxAppPlugin extends AutoPlugin {
 		
 		//------------------------------------------------------------------------------
 		
-		val appOut	= targetDir / (bundleName + ".app") 
-		streams.log info s"building osx app in ${appOut}"
+		streams.log info s"building osx app in ${appDir}"
 		
 		// TODO inelegant
-		IO delete			appOut
-		IO createDirectory	appOut
+		IO delete			appDir
+		IO createDirectory	appDir
 		
-		val contents	= appOut / "Contents"
+		val contents	= appDir / "Contents"
 		IO write (contents / "PkgInfo", 	"APPL????",	IO.utf8)
 		IO write (contents / "Info.plist",	plist,		IO.utf8)
 		
@@ -224,9 +248,24 @@ object OsxAppPlugin extends AutoPlugin {
 		executableFile setExecutable (true, false)
 		
 		IO copyFile	(bundleIcons,	contents / "Resources" / bundleIcons.getName)
-		val assetsToCopy	= assets map { _.flatPathMapping } map (PathMapping anchorTo contents / "Resources" / "Java")
+		val assetsToCopy	= assets map { _.flatPathMapping } map (xu.pathMapping anchorTo contents / "Resources" / "Java")
 		IO copy assetsToCopy
 		
-		appOut
+		appDir
+	}
+	
+	/** build app zip */
+	private def zipTask(
+		streams:TaskStreams,	
+		appDir:File,
+		prefix:String,
+		appZip:File
+	):File = {
+		streams.log info s"creating zip file ${appZip}"
+		xu.zip create (
+			sources		= xu.find filesMapped appDir map (xu.pathMapping prefixPath prefix),
+			outputZip	= appZip
+		)
+		appZip
 	}
 }
