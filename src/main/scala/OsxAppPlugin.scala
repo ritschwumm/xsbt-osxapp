@@ -97,7 +97,7 @@ object OsxAppPlugin extends AutoPlugin {
 				// osxappBundleIcons	:= null,
 				osxappVm				:= OracleJava7(),
 				
-				osxappMainClass			:= Keys.mainClass.value,
+				osxappMainClass			:= (Keys.mainClass in Runtime).value,
 				osxappVmOptions			:= Seq.empty,
 				osxappSystemProperties	:= Map.empty,
 				osxappPrefixArguments	:= Seq.empty,
