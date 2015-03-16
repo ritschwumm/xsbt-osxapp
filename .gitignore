@@ -1,4 +1,5 @@
 target/
 project/boot/
 
-/build/
+/doc/
+/versatz/
