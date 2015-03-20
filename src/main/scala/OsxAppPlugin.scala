@@ -17,7 +17,7 @@ object Import {
 	case class AppleJava6(
 		version:String	= "1.6",	// 1.6 or 1.6+ or 1.6*
 		stub:File		= file("/System/Library/Frameworks/JavaVM.framework/Versions/Current/Resources/MacOS/JavaApplicationStub")
-	) 
+	)
 	extends OsxAppVm
 	
 	case class OracleJava7(
@@ -126,16 +126,16 @@ object OsxAppPlugin extends AutoPlugin {
 	):File = {
 		val mainClassGot	=
 				mainClass getOrElse {
-					xu.fail logging (streams, s"${osxappMainClass.key.label} must be set") 
+					xu.fail logging (streams, s"${osxappMainClass.key.label} must be set")
 				}
 		
-		val executableName:String	= 
+		val executableName:String	=
 				vm match {
 					case AppleJava6(jvmVersion, javaApplicationStub)	=> "JavaApplicationStub"
 					case OracleJava7(javaCommand)						=> "run"
 				}
 				
-		def plist:String	= 
+		def plist:String	=
 				"""<?xml version="1.0" encoding="UTF-8"?>""" +
 				"""<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">"""	+
 				<plist version="1.0">
@@ -176,7 +176,7 @@ object OsxAppPlugin extends AutoPlugin {
 			val prefixArgumentsXml	= arrayXml(prefixArguments)
 			val out:NodeSeq	=
 					<xml:group>
-						<!-- 
+						<!--
 						$JAVAROOT		Contents/Resources/Java
 						$APP_PACKAGE	the root directory of the bundle
 						$USER_HOME		the current user's home directory
@@ -190,7 +190,7 @@ object OsxAppPlugin extends AutoPlugin {
 							<key>Arguments</key>		{prefixArgumentsXml}
 							<key>ClassPath</key>		{classPathXml}
 							<key>Properties</key>		{systemPropertiesXml}
-							<!-- 
+							<!--
 							<key>apple.awt.brushMetalLook</key>							<string>true</string>
 							<key>com.apple.macos.useScreenMenuBar</key>					<string>true</string>
 							<key>com.apple.mrj.application.apple.menu.about.name</key>	<string>{bundleName}</string>
@@ -209,8 +209,8 @@ object OsxAppPlugin extends AutoPlugin {
 				}
 				
 		def shellScript(javaCommand:String):String	= {
-			val parts:Seq[Seq[String]]	= 
-					Vector( 
+			val parts:Seq[Seq[String]]	=
+					Vector(
 						Vector(javaCommand)							map xu.script.unixHardQuote,
 						vmOptions									map xu.script.unixHardQuote,
 						xu.script systemProperties systemProperties	map xu.script.unixHardQuote,

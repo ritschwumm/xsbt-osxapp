@@ -1,6 +1,6 @@
 An osx app bundle plugin for sbt
 
-To build this code, get and install SBT from 
+To build this code, get and install SBT from
     https://github.com/sbt/sbt
 
 Get and install these plugins before building:
@@ -11,29 +11,29 @@ Build and publish the plugin:
     git clone git@github.com:ritschwumm/xsbt-osxapp.git
     cd xsbt-osxapp
     sbt publish-local
-    
+
 Add the plugin to your project in project/plugins.sbt:
     addSbtPlugin("de.djini" % "xsbt-osxapp" % <version>)
-    
+
 Include the plugin in your project's build.sbt:
 
     osxappMainClass     := Some("my.Main")
-    
+
     osxappBundleIcons   := file("default.icns")
-    
+
     osxappVmOptions     := Seq("-Xmx128m")
-    
+
 The osxappVM key lets you choose which java VM you want to use. To use a regular
 JVM from Oracle insert this code:
 
-    // path defaults to /Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/bin/java 
+    // path defaults to /Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/bin/java
     osxappVm    := Oracle7("/path/to/java/command")
-    
+
 To use Apple's java 6 VM and their JavaApplicationStub, insert this code:
-    
+
     // path defaults to /System/Library/Frameworks/JavaVM.framework/Versions/Current/Resources/MacOS/JavaApplicationStub
     osxappVm    := AppleJava6("1.6+", file("/path/to/JavaApplicationStub"))
-    
+
 You can leave out this key to assume Oracle7()
 
 Run the osxapp task to get a directory containing a os x application bundle.
@@ -43,5 +43,5 @@ To create a zip file from the application, you can use the xsbt-zipper plugin:
     // osxapp::zipper
     inTask(osxappBuild)(zipperSettings ++ Seq(
         zipperFiles     := selectSubpaths(osxappBuild.value, -DirectoryFilter).toSeq,
-        zipperBundle    := zipperBundle.value + ".app" 
+        zipperBundle    := zipperBundle.value + ".app"
     ))
