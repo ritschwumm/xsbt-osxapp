@@ -20,7 +20,7 @@ object Import {
 	)
 	extends OsxAppVm
 	
-	case class OracleJava7(
+	case class OracleJava(
 		command:String	= "/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/bin/java"
 	)
 	extends OsxAppVm
@@ -38,7 +38,7 @@ object Import {
 	val osxappBundleName		= settingKey[String]("bundle name without the \".app\" suffix")
 	val osxappBundleVersion		= settingKey[String]("short version")
 	val osxappBundleIcons		= settingKey[File](".icns file")
-	val osxappVm				= settingKey[OsxAppVm]("AppleJava6 or OracleJava7")
+	val osxappVm				= settingKey[OsxAppVm]("AppleJava6 or OracleJava")
 	
 	val osxappMainClass			= taskKey[Option[String]]("name of the main class")
 	val osxappVmOptions			= settingKey[Seq[String]]("vm options like -Xmx128")
@@ -95,7 +95,7 @@ object OsxAppPlugin extends AutoPlugin {
 				osxappBundleVersion		:= Keys.version.value,
 				// mandatory
 				// osxappBundleIcons	:= null,
-				osxappVm				:= OracleJava7(),
+				osxappVm				:= OracleJava(),
 				
 				osxappMainClass			:= (Keys.mainClass in Runtime).value,
 				osxappVmOptions			:= Seq.empty,
@@ -132,7 +132,7 @@ object OsxAppPlugin extends AutoPlugin {
 		val executableName:String	=
 				vm match {
 					case AppleJava6(jvmVersion, javaApplicationStub)	=> "JavaApplicationStub"
-					case OracleJava7(javaCommand)						=> "run"
+					case OracleJava(javaCommand)						=> "run"
 				}
 				
 		def plist:String	=
@@ -158,7 +158,7 @@ object OsxAppPlugin extends AutoPlugin {
 		def plistInner:NodeSeq	=
 				vm match {
 					case AppleJava6(jvmVersion, _)	=> appStubConfig(jvmVersion)
-					case OracleJava7(javaCommand)	=> <xml:group></xml:group>
+					case OracleJava(javaCommand)	=> <xml:group></xml:group>
 				}
 				
 		def appStubConfig(_jvmVersion:String):NodeSeq	= {
@@ -205,7 +205,7 @@ object OsxAppPlugin extends AutoPlugin {
 		def executableData:Either[File,String]	=
 				vm match {
 					case AppleJava6(_, javaApplicationStub)	=> Left(javaApplicationStub)
-					case OracleJava7(javaCommand)			=> Right(shellScript(javaCommand))
+					case OracleJava(javaCommand)			=> Right(shellScript(javaCommand))
 				}
 				
 		def shellScript(javaCommand:String):String	= {
