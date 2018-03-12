@@ -104,7 +104,7 @@ object OsxAppPlugin extends AutoPlugin {
 				
 				osxappBuildDir			:= Keys.crossTarget.value / "osxapp",
 				
-				Keys.watchSources		:= Keys.watchSources.value :+ osxappBundleIcons.value
+				Keys.watchSources		:= Keys.watchSources.value :+ Watched.WatchSource(osxappBundleIcons.value)
 			)
 	
 	//------------------------------------------------------------------------------
