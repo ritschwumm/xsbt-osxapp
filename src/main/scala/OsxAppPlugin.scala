@@ -14,27 +14,17 @@ import xsbtClasspath.Import.classpathAssets
 object Import {
 	sealed trait OsxAppVm
 
-	/** for apple java 6 */
-	final case class JavaApplicationStub(
-		version:String	= "1.6",	// 1.6 or 1.6+ or 1.6*
-		// this exists on old macs where java 6 was installed
-		stub:File		= file("/System/Library/Frameworks/JavaVM.framework/Versions/Current/Resources/MacOS/JavaApplicationStub")
-	)
-	extends OsxAppVm
+	/** this is the standard case for newer installations like AdoptOpenJDK and uses /usr/libexec/java_home -v */
+	final case class JavaHomeVersion(version:String) extends OsxAppVm
 
-	/** for oracle java 8+ */
-	final case class JavaExecutable(
-		// this is installed by the oracle jdk
-		command:String	= "/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/bin/java"
-	)
-	extends OsxAppVm
+	/** use the default java installation, uses /usr/libexec/java_home _without_ "-v" */
+	final case object JavaHomeDefault extends OsxAppVm
 
-	/** for newer installations like AdoptOpenJDK */
-	final case class JavaFromHome(
-		// uses the first version found using java_home
-		versions:Seq[String]	= Vector("1.8")
-	)
-	extends OsxAppVm
+	/** for oracle java 8+, goes to "/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/bin/java" */
+	final case object JavaPlugin extends OsxAppVm
+
+	/** for oracle java 8+ with manually installed java binaries */
+	final case class JavaExecutable(path:String) extends OsxAppVm
 
 	//------------------------------------------------------------------------------
 
@@ -49,7 +39,7 @@ object Import {
 	val osxappBundleName		= settingKey[String]("bundle name without the \".app\" suffix")
 	val osxappBundleVersion		= settingKey[String]("short version")
 	val osxappBundleIcons		= settingKey[File](".icns file")
-	val osxappVm				= settingKey[OsxAppVm]("JavaApplicationStub, JavaExecutable or JavaFromHome")
+	val osxappVm				= settingKey[OsxAppVm]("JavaHomeVersion, JavaHomeDefault, JavaPlugin or JavaExecutable")
 
 	val osxappMainClass			= taskKey[Option[String]]("name of the main class")
 	val osxappVmOptions			= settingKey[Seq[String]]("vm options like -Xmx128")
@@ -106,7 +96,7 @@ object OsxAppPlugin extends AutoPlugin {
 				osxappBundleVersion		:= Keys.version.value,
 				// mandatory
 				// osxappBundleIcons	:= null,
-				osxappVm				:= JavaExecutable(),
+				osxappVm				:= JavaHomeVersion("1.8+"),
 
 				osxappMainClass			:= (Keys.mainClass in Runtime).value,
 				osxappVmOptions			:= Seq.empty,
@@ -140,12 +130,7 @@ object OsxAppPlugin extends AutoPlugin {
 					xu.fail logging (streams, s"${osxappMainClass.key.label} must be set")
 				}
 
-		val executableName:String	=
-				vm match {
-					case JavaApplicationStub(_, _)	=> "JavaApplicationStub"
-					case JavaExecutable(_)			=> "run"
-					case JavaFromHome(_)			=> "run"
-				}
+		val executableName:String	= "run"
 
 		def plist:String	=
 				"""<?xml version="1.0" encoding="UTF-8"?>""" +
@@ -167,82 +152,28 @@ object OsxAppPlugin extends AutoPlugin {
 					</dict>
 				</plist>
 
-		def plistInner:NodeSeq	=
-				vm match {
-					case JavaApplicationStub(jvmVersion, _)	=> appStubConfig(jvmVersion)
-					case JavaExecutable(_)					=> <xml:group></xml:group>
-					case JavaFromHome(_)					=> <xml:group></xml:group>
-				}
+		def plistInner:NodeSeq	= <xml:group></xml:group>
 
-		def appStubConfig(_jvmVersion:String):NodeSeq	= {
-			def stringXml(s:String)				= <string>{ s }</string>
-			def arrayXml(ss:Seq[String])		= <array>{ ss map stringXml }</array>
-			def keyXml(s:String)				= <key>{ s }</key>
-			def itemXml(sp:(String,String))		= <xml:group>{ keyXml(sp._1) }{ stringXml(sp._2) }</xml:group>
-			def dictXml(ss:Map[String,String])	= <dict>{ ss map itemXml }</dict>
-
-			val jvmVersionXml		= stringXml(_jvmVersion)
-			val mainClassXml		= stringXml(mainClassGot)
-			val classPathXml		= stringXml(assets	map { _.name } mkString ":")
-			val vmOptionsXml		= arrayXml(vmOptions)
-			val systemPropertiesXml	= dictXml(systemProperties)
-			val prefixArgumentsXml	= arrayXml(prefixArguments)
-			val out:NodeSeq	=
-					<xml:group>
-						<!--
-						$JAVAROOT		Contents/Resources/Java
-						$APP_PACKAGE	the root directory of the bundle
-						$USER_HOME		the current user's home directory
-						-->
-						<key>Java</key>
-						<dict>
-							<key>JVMVersion</key>		{jvmVersionXml}
-							<key>MainClass</key>		{mainClassXml}
-							<key>WorkingDirectory</key>	<string>$JAVAROOT</string>
-							<key>VMOptions</key>		{vmOptionsXml}
-							<key>Arguments</key>		{prefixArgumentsXml}
-							<key>ClassPath</key>		{classPathXml}
-							<key>Properties</key>		{systemPropertiesXml}
-							<!--
-							<key>apple.awt.brushMetalLook</key>							<string>true</string>
-							<key>com.apple.macos.useScreenMenuBar</key>					<string>true</string>
-							<key>com.apple.mrj.application.apple.menu.about.name</key>	<string>{bundleName}</string>
-							<key>com.apple.mrj.application.growbox.intrudes</key>		<string>true</string>
-							<key>com.apple.mrj.application.live-resize</key>			<string>true</string>
-							-->
-						</dict>
-					</xml:group>
-			out
-		}
-
-		def executableData:Either[File,String]	=
-				vm match {
-					case JavaApplicationStub(_, javaApplicationStub)	=> Left(javaApplicationStub)
-					case JavaExecutable(javaCommand)					=> Right(shellScript(Right(javaCommand)))
-					case JavaFromHome(versions)							=> Right(shellScript(Left(versions)))
-				}
-
-		def shellScript(versionsOrCommand:Either[Seq[String],String]):String	= {
+		def shellScript(variant:OsxAppVm):String	= {
 			def usePath(path:String):String	=
 					"java_executable=" + (xu.script unixHardQuote path)
 
-			def useVersions(versions:Seq[String]):String	=
-					"""
-					java_home=
-					for version in """ ++ (versions map xu.script.unixHardQuote mkString " ") ++ """; do
-						if java_home=$(/usr/libexec/java_home -v "$version" 2>/dev/null); then break; fi
-					done
-					[ -n "$java_home" ] || {
-						echo >&2 "no suitable java installation found"
-						exit 1
-					}
-					java_executable="$java_home/bin/java"
-					"""
+			def useVersion(version:Option[String]):String	=
+					("""
+					|java_home=$(/usr/libexec/java_home """ ++ (version map { v => "-v " + xu.script.unixHardQuote(v) } getOrElse "") ++ """ 2>/dev/null) || {
+					|	echo >&2 "no suitable java installation found"
+					|	exit 1
+					|}
+					|java_executable="$java_home/bin/java"
+					""")
+					.stripMargin
 
 			val executable:String	=
-					versionsOrCommand match {
-						case Left(versions)	=> useVersions(versions)
-						case Right(path)	=> usePath(path)
+					variant match {
+						case JavaPlugin					=> usePath("/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/bin/java")
+						case JavaExecutable(path)		=> usePath(path)
+						case JavaHomeDefault			=> useVersion(None)
+						case JavaHomeVersion(version)	=> useVersion(Some(version))
 					}
 
 			val command:String	=
@@ -259,11 +190,13 @@ object OsxAppPlugin extends AutoPlugin {
 
 			// export LC_CTYPE="en_US.UTF-8"
 			val script	=
-					"""#!/bin/bash
-					base="$(dirname "$0")"/../Resources/Java
-					""" + executable	+ """
-					""" + command		+ """
-					"""
+					Vector(
+						"""#!/bin/bash""",
+						"""base="$(dirname "$0")"/../Resources/Java""",
+						executable,
+						command
+					)
+					.mkString("", "\n", "\n")
 			script
 		}
 
@@ -280,13 +213,12 @@ object OsxAppPlugin extends AutoPlugin {
 		IO write (contents / "Info.plist",	plist,		IO.utf8)
 
 		val executableFile	= contents / "MacOS" / executableName
-		executableData match {
-			case Left(file)		=> IO copyFile	(file, executableFile)
-			case Right(string)	=> IO write		(executableFile, string, IO.utf8)
-		}
+		val executableData	= shellScript(vm)
+		IO write (executableFile, executableData, IO.utf8)
 		executableFile setExecutable (true, false)
 
 		IO copyFile	(bundleIcons,	contents / "Resources" / bundleIcons.getName)
+
 		val assetsToCopy	= assets map { _.flatPathMapping } map (xu.pathMapping anchorTo contents / "Resources" / "Java")
 		IO copy assetsToCopy
 
