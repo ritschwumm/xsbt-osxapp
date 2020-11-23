@@ -61,52 +61,52 @@ object OsxAppPlugin extends AutoPlugin {
 	override val trigger:PluginTrigger	= noTrigger
 
 	override lazy val projectSettings:Seq[Def.Setting[_]]	=
-			Vector(
-				osxapp		:=
-						buildTask(
-							streams				= Keys.streams.value,
-							assets				= classpathAssets.value,
-							appDir				= osxappAppDir.value,
-							bundleId			= osxappBundleId.value,
-							bundleName			= osxappBundleName.value,
-							bundleVersion		= osxappBundleVersion.value,
-							bundleIcons			= osxappBundleIcons.value,
-							vm					= osxappVm.value,
-							mainClass			= osxappMainClass.value,
-							vmOptions			= osxappVmOptions.value,
-							systemProperties	= osxappSystemProperties.value,
-							prefixArguments		= osxappPrefixArguments.value
-						),
-				osxappAppDir			:= osxappBuildDir.value / osxappPackageName.value,
+		Vector(
+			osxapp		:=
+				buildTask(
+					streams				= Keys.streams.value,
+					assets				= classpathAssets.value,
+					appDir				= osxappAppDir.value,
+					bundleId			= osxappBundleId.value,
+					bundleName			= osxappBundleName.value,
+					bundleVersion		= osxappBundleVersion.value,
+					bundleIcons			= osxappBundleIcons.value,
+					vm					= osxappVm.value,
+					mainClass			= osxappMainClass.value,
+					vmOptions			= osxappVmOptions.value,
+					systemProperties	= osxappSystemProperties.value,
+					prefixArguments		= osxappPrefixArguments.value
+				),
+			osxappAppDir			:= osxappBuildDir.value / osxappPackageName.value,
 
-				osxappZip	:=
-						zipTask(
-							streams	= Keys.streams.value,
-							appDir	= osxapp.value,
-							prefix	= osxappPackageName.value,
-							appZip	= osxappAppZip.value
-						),
-				osxappAppZip			:= osxappBuildDir.value / (osxappPackageName.value + ".zip"),
+			osxappZip	:=
+				zipTask(
+					streams	= Keys.streams.value,
+					appDir	= osxapp.value,
+					prefix	= osxappPackageName.value,
+					appZip	= osxappAppZip.value
+				),
+			osxappAppZip			:= osxappBuildDir.value / (osxappPackageName.value + ".zip"),
 
-				osxappPackageName		:= Keys.name.value + "-" + Keys.version.value + ".app",
+			osxappPackageName		:= Keys.name.value + "-" + Keys.version.value + ".app",
 
-				osxappBundleId			:= Keys.organization.value + "." + Keys.normalizedName.value,
-				osxappBundleName		:= (Keys.name in Runtime).value,
-				// TODO use version for CFBundleShortVersionString and add build number for CFBundleVersion
-				osxappBundleVersion		:= Keys.version.value,
-				// mandatory
-				// osxappBundleIcons	:= null,
-				osxappVm				:= JavaHomeVersion("1.8+"),
+			osxappBundleId			:= Keys.organization.value + "." + Keys.normalizedName.value,
+			osxappBundleName		:= (Keys.name in Runtime).value,
+			// TODO use version for CFBundleShortVersionString and add build number for CFBundleVersion
+			osxappBundleVersion		:= Keys.version.value,
+			// mandatory
+			// osxappBundleIcons	:= null,
+			osxappVm				:= JavaHomeVersion("1.8+"),
 
-				osxappMainClass			:= (Keys.mainClass in Runtime).value,
-				osxappVmOptions			:= Seq.empty,
-				osxappSystemProperties	:= Map.empty,
-				osxappPrefixArguments	:= Seq.empty,
+			osxappMainClass			:= (Keys.mainClass in Runtime).value,
+			osxappVmOptions			:= Seq.empty,
+			osxappSystemProperties	:= Map.empty,
+			osxappPrefixArguments	:= Seq.empty,
 
-				osxappBuildDir			:= Keys.crossTarget.value / "osxapp",
+			osxappBuildDir			:= Keys.crossTarget.value / "osxapp",
 
-				Keys.watchSources		:= Keys.watchSources.value :+ Watched.WatchSource(osxappBundleIcons.value)
-			)
+			Keys.watchSources		:= Keys.watchSources.value :+ Watched.WatchSource(osxappBundleIcons.value)
+		)
 
 	//------------------------------------------------------------------------------
 	//## build task
@@ -126,77 +126,77 @@ object OsxAppPlugin extends AutoPlugin {
 		prefixArguments:Seq[String]
 	):File = {
 		val mainClassGot	=
-				mainClass getOrElse {
-					xu.fail logging (streams, s"${osxappMainClass.key.label} must be set")
-				}
+			mainClass getOrElse {
+				xu.fail logging (streams, s"${osxappMainClass.key.label} must be set")
+			}
 
 		val executableName:String	= "run"
 
 		def plist:String	=
-				"""<?xml version="1.0" encoding="UTF-8"?>""" +
-				"""<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">"""	+
-				<plist version="1.0">
-					<dict>
-						<key>CFBundleDevelopmentRegion</key>		<string>English</string>
-						<key>CFBundleExecutable</key>				<string>{executableName}</string>
-						<key>CFBundleGetInfoString</key>			<string>{bundleVersion}</string>
-						<key>CFBundleIconFile</key>					<string>{bundleIcons.getName}</string>
-						<key>CFBundleIdentifier</key>				<string>{bundleId}</string>
-						<key>CFBundleInfoDictionaryVersion</key>	<string>6.0</string>
-						<key>CFBundleName</key>						<string>{bundleName}</string>
-						<key>CFBundlePackageType</key>				<string>APPL</string>
-						<key>CFBundleShortVersionString</key>		<string>{bundleVersion}</string>
-						<key>CFBundleSignature</key>				<string>????</string>
-						<key>CFBundleVersion</key>					<string>{bundleVersion}</string>
-						{plistInner}
-					</dict>
-				</plist>
+			"""<?xml version="1.0" encoding="UTF-8"?>""" +
+			"""<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">"""	+
+			<plist version="1.0">
+				<dict>
+					<key>CFBundleDevelopmentRegion</key>		<string>English</string>
+					<key>CFBundleExecutable</key>				<string>{executableName}</string>
+					<key>CFBundleGetInfoString</key>			<string>{bundleVersion}</string>
+					<key>CFBundleIconFile</key>					<string>{bundleIcons.getName}</string>
+					<key>CFBundleIdentifier</key>				<string>{bundleId}</string>
+					<key>CFBundleInfoDictionaryVersion</key>	<string>6.0</string>
+					<key>CFBundleName</key>						<string>{bundleName}</string>
+					<key>CFBundlePackageType</key>				<string>APPL</string>
+					<key>CFBundleShortVersionString</key>		<string>{bundleVersion}</string>
+					<key>CFBundleSignature</key>				<string>????</string>
+					<key>CFBundleVersion</key>					<string>{bundleVersion}</string>
+					{plistInner}
+				</dict>
+			</plist>
 
 		def plistInner:NodeSeq	= <xml:group></xml:group>
 
 		def shellScript(variant:OsxAppVm):String	= {
 			def usePath(path:String):String	=
-					"java_executable=" + (xu.script unixHardQuote path)
+				"java_executable=" + (xu.script unixHardQuote path)
 
 			def useVersion(version:Option[String]):String	=
-					("""
-					|java_home=$(/usr/libexec/java_home """ ++ (version map { v => "-v " + xu.script.unixHardQuote(v) } getOrElse "") ++ """ 2>/dev/null) || {
-					|	echo >&2 "no suitable java installation found"
-					|	exit 1
-					|}
-					|java_executable="$java_home/bin/java"
-					""")
-					.stripMargin
+				("""
+				|java_home=$(/usr/libexec/java_home """ ++ (version map { v => "-v " + xu.script.unixHardQuote(v) } getOrElse "") ++ """ 2>/dev/null) || {
+				|	echo >&2 "no suitable java installation found"
+				|	exit 1
+				|}
+				|java_executable="$java_home/bin/java"
+				""")
+				.stripMargin
 
 			val executable:String	=
-					variant match {
-						case JavaPlugin					=> usePath("/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/bin/java")
-						case JavaExecutable(path)		=> usePath(path)
-						case JavaHomeDefault			=> useVersion(None)
-						case JavaHomeVersion(version)	=> useVersion(Some(version))
-					}
+				variant match {
+					case JavaPlugin					=> usePath("/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/bin/java")
+					case JavaExecutable(path)		=> usePath(path)
+					case JavaHomeDefault			=> useVersion(None)
+					case JavaHomeVersion(version)	=> useVersion(Some(version))
+				}
 
 			val command:String	=
-					Vector(
-						Vector("$java_executable")					map xu.script.unixSoftQuote,
-						vmOptions									map xu.script.unixHardQuote,
-						xu.script systemProperties systemProperties	map xu.script.unixHardQuote,
-						Vector("-cp")								map xu.script.unixHardQuote,
-						Vector(""""$base"/'*'"""),
-						Vector(mainClassGot)						map xu.script.unixHardQuote,
-						prefixArguments								map xu.script.unixHardQuote
-					)
-					.flatten.mkString(" ")
+				Vector(
+					Vector("$java_executable")					map xu.script.unixSoftQuote,
+					vmOptions									map xu.script.unixHardQuote,
+					xu.script systemProperties systemProperties	map xu.script.unixHardQuote,
+					Vector("-cp")								map xu.script.unixHardQuote,
+					Vector(""""$base"/'*'"""),
+					Vector(mainClassGot)						map xu.script.unixHardQuote,
+					prefixArguments								map xu.script.unixHardQuote
+				)
+				.flatten.mkString(" ")
 
 			// export LC_CTYPE="en_US.UTF-8"
 			val script	=
-					Vector(
-						"""#!/bin/bash""",
-						"""base="$(dirname "$0")"/../Resources/Java""",
-						executable,
-						command
-					)
-					.mkString("", "\n", "\n")
+				Vector(
+					"""#!/bin/bash""",
+					"""base="$(dirname "$0")"/../Resources/Java""",
+					executable,
+					command
+				)
+				.mkString("", "\n", "\n")
 			script
 		}
 
