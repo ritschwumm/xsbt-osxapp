@@ -91,14 +91,14 @@ object OsxAppPlugin extends AutoPlugin {
 			osxappPackageName		:= Keys.name.value + "-" + Keys.version.value + ".app",
 
 			osxappBundleId			:= Keys.organization.value + "." + Keys.normalizedName.value,
-			osxappBundleName		:= (Keys.name in Runtime).value,
+			osxappBundleName		:= (Runtime / Keys.name).value,
 			// TODO use version for CFBundleShortVersionString and add build number for CFBundleVersion
 			osxappBundleVersion		:= Keys.version.value,
 			// mandatory
 			// osxappBundleIcons	:= null,
 			osxappVm				:= JavaHomeVersion("1.8+"),
 
-			osxappMainClass			:= (Keys.mainClass in Runtime).value,
+			osxappMainClass			:= (Runtime / Keys.mainClass).value,
 			osxappVmOptions			:= Seq.empty,
 			osxappSystemProperties	:= Map.empty,
 			osxappPrefixArguments	:= Seq.empty,
