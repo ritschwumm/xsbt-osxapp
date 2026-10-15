@@ -6,7 +6,7 @@ sbtPlugin		:= true
 
 name			:= "xsbt-osxapp"
 organization	:= "de.djini"
-version			:= "2.8.0"
+version			:= "2.9.0"
 
 scalacOptions	++= Seq(
 	"-feature",
@@ -15,6 +15,5 @@ scalacOptions	++= Seq(
 	"-Xfatal-warnings",
 )
 
-conflictManager	:= ConflictManager.strict withOrganization "^(?!(org\\.scala-lang|org\\.scala-js|org\\.scala-sbt)(\\..*)?)$"
-addSbtPlugin("de.djini" % "xsbt-util"		% "1.6.0")
+addSbtPlugin("de.djini" % "xsbt-util"		% "1.7.0")
 addSbtPlugin("de.djini" % "xsbt-classpath"	% "2.8.0")
